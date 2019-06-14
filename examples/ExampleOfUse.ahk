@@ -1,5 +1,8 @@
 ﻿#Include %A_ScriptDir%\..\Util.ahk
 
+stdout := Util.GetStdout("ping localhost")
+Msgbox, %stdout%
+
 dateStrJST := Util.GetJstDateTimeAsIso8601() "+0900"
 Msgbox, %dateStrJST%
 

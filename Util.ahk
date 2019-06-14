@@ -113,11 +113,13 @@ class Util
   /**
    * @Method GetStdout
    * @Description Get stdout {{{
-   * @link http://www.autohotkey.com/board/topic/15455-stdouttovar/page-8#entry540600
-   * @link http://poimono.exblog.jp/25278401/
+   * @Link https://autohotkey.com/board/topic/54559-stdin/
+   *   http://www.autohotkey.com/board/topic/15455-stdouttovar/page-8#entry540600
+   *   http://poimono.exblog.jp/25278401/
+   * @Syntax stdout := Util.GetStdout("ping localhost"[, ...])
    * @Param {string} psCmd
    * @Param {string} [psInput=""]
-   * @Param {string} psEncoding="CP0"]
+   * @Param {string} [psEncoding="CP0"]
    * @Param {string} [psDir=""]
    * @Param {long} [pnExitCode=0]
    * @Return
@@ -131,7 +133,7 @@ class Util
       DllCall("SetHandleInformation", Ptr, hStdInRd, Uint, 1, Uint, 1)
       DllCall("SetHandleInformation", Ptr, hStdOutWr, UInt, 1, UInt, 1)
 
-       VarSetCapacity(pi, (A_PtrSize == 4) ? 16 : 24, 0)
+      VarSetCapacity(pi, (A_PtrSize == 4) ? 16 : 24, 0)
       siSz := VarSetCapacity(si, (A_PtrSize == 4) ? 68 : 104, 0)
       NumPut(siSz, si, 0, "UInt")
       NumPut(0x100, si, (A_PtrSize == 4) ? 44 : 60, "UInt")
@@ -146,28 +148,29 @@ class Util
        , DllCall("CloseHandle", Ptr, hStdOutRd)
        , DllCall("CloseHandle", Ptr, hStdInRd)
 
-      DllCall("CloseHandle", Ptr, hStdOutWr ) ; The write pipe must be closed before reading the stdout.
+      ; The write pipe must be closed before reading the stdout.
+      DllCall("CloseHandle", Ptr, hStdOutWr )
 
-      if (psInput != "")
-       FileOpen(hStdInWr, "h", psEncoding).Write(psInput)
-       DllCall("CloseHandle", "Ptr", hStdInWr)
+      if (psInput != "") {
+        FileOpen(hStdInWr, "h", psEncoding).Write(psInput)
+      }
 
-    ; ################################################################################
+      DllCall("CloseHandle", "Ptr", hStdInWr)
 
       StdOutBuf := FileOpen(hStdOutRd, "h", psEncoding)
       StrBuf := 1
+
       while StrLen(StrBuf) {
        StrBuf := StdOutBuf.Read(2047)
        sOutPut .= StrBuf
       }
       StdOutBuf.Close()
 
-    ; ################################################################################
-
       DllCall("GetExitCodeProcess", Ptr, NumGet(pi, 0), UIntP, pnExitCode)
       DllCall("CloseHandle", Ptr, NumGet(pi, 0) )
       DllCall("CloseHandle", Ptr, NumGet(pi, A_PtrSize) )
       DllCall("CloseHandle", Ptr, hStdOutRd )
+
       Return sOutput
     }
   } ; }}}
