@@ -9,30 +9,6 @@
  * @Links Tuckn https://github.com/tuckn/AhkUtil
  * @Email tuckn333@gmail.com
  */
-; @TODO
-Global G_ExitCodeERR := 1
-
-Global G_MsgBtnOk := 0x0 ; default
-Global G_MsgBtnOC := 0x1
-Global G_MsgBtnARI := 0x2
-Global G_MsgBtnYNC := 0x3
-Global G_MsgBtnYN := 0x4
-Global G_MsgBtnRC := 0x5
-Global G_MsgBtnCTAC := 0x6
-
-Global G_MsgIconStop := 0x10
-Global G_MsgIconQuestion := 0x20
-Global G_MsgIconExclamation := 0x30
-Global G_MsgIconInfo := 0x40
-
-Global G_TrayTipIconNone := 0
-Global G_TrayTipIconInfo := 0x1
-Global G_TrayTipIconWarning := 0x2
-Global G_TrayTipIconError := 0x3
-Global G_TrayTipNoSound := 0x10
-
-Global WM_NCHITTEST = 0x84 ; Test Control HWND
-Global G_SendMessageFAIL = 0xFFFFFFFF ; 32と64で異なる？64は-1？
 
 /**
  * @Class Util
@@ -238,6 +214,26 @@ class Util
       }
 
       Return pathStr
+    }
+  } ; }}}
+
+  /**
+   * @Property CliArgs
+   * @Description CLI arguments {{{
+   * @Syntax args := Util.CliArgs
+   * @Return {Array}
+   */
+  CliArgs[]
+  {
+    get {
+      Return A_Args ; AutoHotkey v1.1.27+
+      ; Get arguments. A_Index begin from 1
+      ; Local args := []
+      ;
+      ; Loop, %0%
+      ; {
+      ;   args[A_Index] := %A_Index%
+      ; }
     }
   } ; }}}
 

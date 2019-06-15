@@ -1,22 +1,24 @@
 ﻿#Include %A_ScriptDir%\..\Util.ahk
 
-stdout := Util.GetStdout("ping localhost")
-Msgbox, %stdout%
+MsgBox, Press [Ctrl] + [Shift] + [9], Run it.
 
-dateStrJST := Util.GetJstDateTimeAsIso8601() "+0900"
-Msgbox, %dateStrJST%
+^+9::
+  stdout := Util.GetStdout("ping localhost")
+  MsgBox, %stdout%
 
-path1 := "C:\Windows\System32"
-convPath1 := Util.GetPathEnclosedInDoubleQuates(path1)
-Msgbox, %path1% -> %convPath1%
+  dateStrJST := Util.GetJstDateTimeAsIso8601() "+0900"
+  MsgBox, %dateStrJST%
 
-path2 := """C:\Program Files (x86)\Internet Explorer"""
-convPath2 := Util.GetPathEnclosedInDoubleQuates(path2)
-Msgbox, %path2% -> %convPath2%
+  path1 := "C:\Windows\System32"
+  convPath1 := Util.GetPathEnclosedInDoubleQuates(path1)
+  MsgBox, %path1% -> %convPath1%
 
-path3 := "C:\ProgramData\Microsoft"
-relPath1to3 := Util.GetRelativePath(path1, path3)
-Msgbox, form %path1%`nto   %path3%`nrel  %relPath1to3%
+  path2 := """C:\Program Files (x86)\Internet Explorer"""
+  convPath2 := Util.GetPathEnclosedInDoubleQuates(path2)
+  MsgBox, %path2% -> %convPath2%
 
-ExitApp
+  path3 := "C:\ProgramData\Microsoft"
+  relPath1to3 := Util.GetRelativePath(path1, path3)
+  MsgBox, form %path1%`nto   %path3%`nrel  %relPath1to3%
 
+  ExitApp
