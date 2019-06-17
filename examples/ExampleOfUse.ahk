@@ -1,8 +1,8 @@
 ﻿#Include %A_ScriptDir%\..\Util.ahk
 
-MsgBox, Press [Ctrl] + [Shift] + [9], Run it.
+MsgBox, Press [Ctrl] + [Shift] + ...`n  [8]: GetStdout/GetJstDateTime/...`n  [9]: ToolTipCountdown/SleepHotkey
 
-^+9::
+^+8::
   stdout := Util.GetStdout("ping localhost")
   MsgBox, %stdout%
 
@@ -22,3 +22,15 @@ MsgBox, Press [Ctrl] + [Shift] + [9], Run it.
   MsgBox, form %path1%`nto   %path3%`nrel  %relPath1to3%
 
   ExitApp
+
+^+9::
+  MsgBox, Start ToolTip count down
+  Util.WaitSecWithToolTipCountdown(5)
+  MsgBox, Finished
+
+  MsgBox, Start Sleeping hotkeys while 5 sec
+  Util.SleepHotkey(5)
+  MsgBox, Finished
+
+  ExitApp
+

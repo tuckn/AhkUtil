@@ -1,13 +1,14 @@
 ﻿/**
- * @Updated 2019/06/13
+ * @Updated 2019/06/18
  * @Fileoverview Utility functions for AutoHotkey
- * @License MIT
  * @Fileencodeing UTF-8[dos]
  * @Requirements AutoHotkey (v1.0.46+ or v2.0-a+)
  * @Installation
  *   Use #Include %A_ScriptDir%\AhkUtil\Util.ahk or copy into your code
- * @Links Tuckn https://github.com/tuckn/AhkUtil
- * @Email tuckn333@gmail.com
+ * @License MIT
+ * @Links https://github.com/tuckn/AhkDesktopManager
+ * @Author Tuckn
+ * @Email tuckn333+github@gmail.com
  */
 
 /**
@@ -152,9 +153,27 @@ class Util
   } ; }}}
 
   /**
+   * @Method GetPathEnclosedInDoubleQuates
+   * @Description C:\Program Files -> "C:\Program Files" {{{
+   */
+  class GetPathEnclosedInDoubleQuates extends Util.Functor
+  {
+    Call(self, pathStr)
+    {
+      pathStr := Trim(pathStr)
+
+      if (RegExMatch(pathStr, "i)[^""].+[^""]") != 0) {
+        pathStr := """" . pathStr . """"
+      }
+
+      Return pathStr
+    }
+  } ; }}}
+
+  /**
    * @Method GetRelativePath
    * @Description Get the relative path {{{
-   * @link https://autohotkey.com/board/topic/17922-func-relativepath-absolutepath/
+   * @Link https://autohotkey.com/board/topic/17922-func-relativepath-absolutepath/
    * @Param {string} MasterDirPath
    * @Param {string} SlavePath
    * @Return {string}
@@ -201,19 +220,69 @@ class Util
   } ; }}}
 
   /**
-   * @Method GetPathEnclosedInDoubleQuates {{{
+   * @Method ParseLParam {{{
    */
-  class GetPathEnclosedInDoubleQuates extends Util.Functor
+  class ParseLParam extends Util.Functor
   {
-    Call(self, pathStr)
+    Call(self, lParam)
     {
-      pathStr := Trim(pathStr)
+      ; Retrieves the CopyDataStruct's lpData member.
+      stringAddress := NumGet(lParam + 2*A_PtrSize)
+      ; Copy the string out of the structure.
+      copyOfData := StrGet(stringAddress)
 
-      if (RegExMatch(pathStr, "i)[^""].+[^""]") != 0) {
-        pathStr := """" . pathStr . """"
+      Return copyOfData
+    }
+  } ; }}}
+
+  /**
+   * @Method SleepHotkey
+   * @Description Get the relative path {{{
+   * @Link https://www.autohotkey.com/docs/commands/Suspend.htm
+   * @Param {Number} sec
+   * @Return
+   */
+  class SleepHotkey extends Util.Functor
+  {
+    Call(self, sec)
+    {
+      ; @NOTE Suspendの前にSleepを入れないと、たまにキーが押しっぱなしになる
+      Sleep, 1000
+      Suspend, On
+
+      Loop, %sec%
+      {
+        ToolTip, Suspending hotkeys is %sec% seconds left
+        Sleep, 1000
+        sec -= 1
       }
 
-      Return pathStr
+      ToolTip
+      Suspend, Off
+      Return
+    }
+  } ; }}}
+
+  /**
+   * @Method WaitSecWithToolTipCountdown
+   * @Description Wait with ToolTip countdown  {{{
+   * @Link https://www.autohotkey.com/docs/commands/Suspend.htm
+   * @Param {Number} sec
+   * @Return
+   */
+  class WaitSecWithToolTipCountdown extends Util.Functor
+  {
+    Call(self, sec)
+    {
+      Loop, %sec%
+      {
+        ToolTip, %sec% seconds left
+        Sleep, 1000
+        sec -= 1
+      }
+
+      ToolTip
+      Return
     }
   } ; }}}
 
