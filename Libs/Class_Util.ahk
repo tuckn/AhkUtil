@@ -1,40 +1,39 @@
 ﻿/**
- * @Updated 2019/06/18
  * @Fileoverview Utility functions for AutoHotkey
- * @Fileencodeing UTF-8[dos]
- * @Requirements AutoHotkey (v1.0.46+ or v2.0-a+)
+ * @Fileencoding UTF-8[dos]
+ * @Requirements AutoHotkey v1.1.x. Not confirmed to work on v2.0 or newer.
  * @Installation
- *   Use #Include %A_ScriptDir%\AhkUtil\Util.ahk or copy into your code
+ *   Use #Include %A_ScriptDir%\AhkUtil\Libs\Class_Util.ahk or copy into your code
  * @License MIT
- * @Links https://github.com/tuckn/AhkDesktopManager
+ * @Links https://github.com/tuckn/AhkUtil
  * @Author Tuckn
- * @Email tuckn333+github@gmail.com
+ * @Email tuckn333@gmail.com
  */
 
 /**
  * @Class Util
- * @Discription The Util object contains methods for parsing
+ * @Description The Util object contains methods for parsing
  * @Methods
  */
 class Util
 {
   /**
-   * @Method CloneObjectFully
-   * @Description Returns a full shallow copy of the object. {{{
-   * @Syntax clonedObj := Util.CloneObjectFully(obj)
+   * @Method CloneObjectDeeply
+   * @Description Returns a full deep clone of the object. {{{
+   * @Syntax clonedObj := Util.CloneObjectDeeply(obj)
    * @Param {Object} obj
    * @Return {Object}
    */
-  class CloneObjectFully extends Util.Functor
+  class CloneObjectDeeply extends Util.Functor
   {
     Call(self, obj)
     {
-      rtnObj := obj.Clone()
+      local rtnObj := obj.Clone()
 
       For k, v in rtnObj
       {
         if (IsObject(v)) {
-          rtnObj[k] := Util.CloneObjectFully(v)
+          rtnObj[k] := Util.CloneObjectDeeply(v)
         }
       }
 
@@ -43,24 +42,24 @@ class Util
   } ; }}}
 
   /**
-   * @Method GetStringFromObject
+   * @Method DumpObjectToString
    * @Description Returns string from the object. {{{
-   * @Syntax objStr := Util.GetStringFromObject(obj)
+   * @Syntax objStr := Util.DumpObjectToString(obj)
    * @Param {Associative Array} obj
    * @Param {String} [indent=""]
    * @Return {String} objStr
    */
-  class GetStringFromObject extends Util.Functor
+  class DumpObjectToString extends Util.Functor
   {
     Call(self, obj, indent="")
     {
-      newIndent .= indent . "  "
-      rtnStr := "{`n"
+      local newIndent .= indent . "  "
+      local rtnStr := "{`n"
 
       For k, v in obj
       {
         if (IsObject(v)) {
-          rtnStr .= newIndent . k . ": " . Util.GetStringFromObject(v, newIndent)
+          rtnStr .= newIndent . k . ": " . Util.DumpObjectToString(v, newIndent)
         } else {
           rtnStr .= newIndent . k . ": " . v . "`n"
         }
@@ -73,12 +72,12 @@ class Util
   } ; }}}
 
   /**
-   * @Method GetJstDateTimeAsIso8601
+   * @Method GetCurrentDateTimeIso8601
    * @Description  {{{
-   * @Syntax dateTextJP := Util.GetJstDateTimeAsIso8601()
+   * @Syntax dateTextJP := Util.GetCurrentDateTimeIso8601()
    * @Return {String} dateTextJP
    */
-  class GetJstDateTimeAsIso8601 extends Util.Functor
+  class GetCurrentDateTimeIso8601 extends Util.Functor
   {
     Call(self)
     {
@@ -88,12 +87,12 @@ class Util
   } ; }}}
 
   /**
-   * @Method GetStdout
+   * @Method ExecAndGetStdout
    * @Description Get stdout {{{
    * @Link https://autohotkey.com/board/topic/54559-stdin/
    *   http://www.autohotkey.com/board/topic/15455-stdouttovar/page-8#entry540600
    *   http://poimono.exblog.jp/25278401/
-   * @Syntax stdout := Util.GetStdout("ping localhost"[, ...])
+   * @Syntax stdout := Util.ExecAndGetStdout("ping localhost"[, ...])
    * @Param {string} psCmd
    * @Param {string} [psInput=""]
    * @Param {string} [psEncoding="CP0"]
@@ -101,7 +100,7 @@ class Util
    * @Param {long} [pnExitCode=0]
    * @Return
    */
-  class GetStdout extends Util.Functor
+  class ExecAndGetStdout extends Util.Functor
   {
     Call(self, psCmd, psInput="", psEncoding:="CP0", psDir:="", ByRef pnExitCode:=0)
     {
@@ -148,25 +147,33 @@ class Util
       DllCall("CloseHandle", Ptr, NumGet(pi, A_PtrSize) )
       DllCall("CloseHandle", Ptr, hStdOutRd )
 
-      Return sOutput
+      Return sOutPut
     }
   } ; }}}
 
   /**
-   * @Method GetPathEnclosedInDoubleQuates
+   * @Method EnclosePathInQuotes
    * @Description C:\Program Files -> "C:\Program Files" {{{
    */
-  class GetPathEnclosedInDoubleQuates extends Util.Functor
+  class EnclosePathInQuotes extends Util.Functor
   {
     Call(self, pathStr)
     {
+      ; Return pathStr
+      local quote := Chr(34)  ; ASCII 34 = "
       pathStr := Trim(pathStr)
 
-      if (RegExMatch(pathStr, "i)[^""].+[^""]") != 0) {
-        pathStr := """" . pathStr . """"
+      ; If the string is shorter than 2 characters,
+      ; or the first/last chars are not double quotes,
+      ; enclose the entire string in double quotes.
+      if (StrLen(pathStr) < 2
+          || SubStr(pathStr, 1, 1) != quote
+          || SubStr(pathStr, 0) != quote)
+      {
+          pathStr := quote . pathStr . quote
       }
 
-      Return pathStr
+      return pathStr
     }
   } ; }}}
 
@@ -227,22 +234,22 @@ class Util
     Call(self, lParam)
     {
       ; Retrieves the CopyDataStruct's lpData member.
-      stringAddress := NumGet(lParam + 2*A_PtrSize)
+      local stringAddress := NumGet(lParam + 2*A_PtrSize)
       ; Copy the string out of the structure.
-      copyOfData := StrGet(stringAddress)
+      local copyOfData := StrGet(stringAddress)
 
       Return copyOfData
     }
   } ; }}}
 
   /**
-   * @Method SleepHotkey
-   * @Description Get the relative path {{{
+   * @Method SuspendHotkeysForSec
+   * @Description Suspend hotkeys while waiting {{{
    * @Link https://www.autohotkey.com/docs/commands/Suspend.htm
    * @Param {Number} sec
    * @Return
    */
-  class SleepHotkey extends Util.Functor
+  class SuspendHotkeysForSec extends Util.Functor
   {
     Call(self, sec)
     {
