@@ -1,7 +1,10 @@
+;------------------------------------------------------------------
+;  test-runner entry file
+;------------------------------------------------------------------
 #Requires AutoHotkey v2.0
 #NoTrayIcon
-#Include Class_Util.test.ahk
 
+#Include Class_Util.test.ahk     ; your test file(s)
 global g_tests := [
     "Test_CloneObjectDeeply",
     "Test_DumpObjectToString",
@@ -13,30 +16,56 @@ global g_tests := [
     "Test_CliArgs"
 ]
 
-; 1) コンソールを確保（親にくっ付く／無ければ新規に作成）
-if !DllCall("AttachConsole", "uint", -1) { ; -1 = ATTACH_PARENT_PROCESS
-    ; 親にぶら下がれなければ自前で作る
-    if !DllCall("AllocConsole")
-        MsgBox("コンソールの取得に失敗しました ― 出力は行われません", "Error", 0x10)
+; ----------------------------------------------------------
+; 1) make sure a console exists
+; ----------------------------------------------------------
+if !DllCall("AttachConsole", "uint", -1) {        ; -1 = parent
+    if !DllCall("AllocConsole") {
+        MsgBox("Cannot allocate console – output disabled", "Error", 0x10)
+    }
 }
 
-; Windows 10/11 では ANSI シーケンスを有効化すると色付けが可能
-STD_OUTPUT_HANDLE := -11
-hOut := DllCall("GetStdHandle", "int", STD_OUTPUT_HANDLE, "ptr")
-if hOut and hOut != -1 {
-    MODE := 0
-    DllCall("GetConsoleMode", "ptr", hOut, "uint*", &MODE)
-    ENABLE_VT_PROCESSING := 0x0004
-    DllCall("SetConsoleMode", "ptr", hOut, "uint", MODE | ENABLE_VT_PROCESSING)
+EnableVT() {
+    /* Enable ANSI colours on Win 10/11 */
+    static STD_OUTPUT_HANDLE := -11
+    static ENABLE_VT_PROCESS := 0x0004
+
+    local hOut := DllCall("GetStdHandle", "int", STD_OUTPUT_HANDLE, "ptr")
+    if (hOut && hOut != -1) {
+        mode := 0
+        DllCall("GetConsoleMode", "ptr", hOut, "uint*", &mode)
+        DllCall("SetConsoleMode", "ptr", hOut, "uint", mode | ENABLE_VT_PROCESS)
+    }
+}
+EnableVT()
+
+; ----------------------------------------------------------
+; 2) obtain stdout/stderr streams **once** (with validation)
+; ----------------------------------------------------------
+GetStdStreams(&out, &err) {
+    static initialised := false
+    static s_out, s_err
+
+    if !initialised {
+        s_out := FileOpen("CONOUT$", "w")
+        if !IsObject(s_out) {          ; still failed → fallback to MsgBox
+            throw Error("Failed to open CONOUT$ for writing")
+        }
+
+        s_err := s_out               ; same handle (colour later if needed)
+        initialised := true
+    }
+    out := s_out
+    err := s_err
 }
 
-; 2) CONOUT$ を open して std / err として使う
-global std := FileOpen("CONOUT$", "w")   ; 標準出力
-global err := std                       ; ここでは色付けせず共用
-; もし色付けしたいなら WriteConsoleW 直叩きや ANSI エスケープで行う
-
-; 3) テスト実行関数
+; ----------------------------------------------------------
+; 3) test-runner
+; ----------------------------------------------------------
 RunAllTests() {
+    local std, err
+    GetStdStreams(&std, &err)          ; guaranteed File objects
+
     local failed := 0
     std.WriteLine("=== Running " g_tests.Length " tests ===`n")
 
@@ -52,13 +81,14 @@ RunAllTests() {
     }
 
     std.WriteLine("---")
-
-    if failed > 0 {
+    if failed {
         err.WriteLine("RESULT: " failed " test(s) failed")
-        ExitApp(failed) ; 非ゼロで失敗数を返す
     } else {
-        std.WriteLine("RESULT: All tests passed v")
-        ExitApp(0)
+        std.WriteLine("RESULT: All tests passed (^_^)b")
     }
+
+    std.Close(), err.Close()
+    ExitApp(failed)                    ; 0 = success, n = failures
 }
+
 RunAllTests()
