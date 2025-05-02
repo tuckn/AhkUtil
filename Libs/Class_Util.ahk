@@ -1,331 +1,376 @@
 ﻿/**
- * @Fileoverview Utility functions for AutoHotkey
- * @Fileencoding UTF-8[dos]
- * @Requirements AutoHotkey v1.1.x. Not confirmed to work on v2.0 or newer.
- * @Installation
+ * @fileoverview Miscellaneous helper utilities (AutoHotkey v2.x)
+ * @fileencoding UTF-8[dos]
+ * @requirements AutoHotkey v2.0 or newer.
+ * @installation
  *   Use #Include %A_ScriptDir%\AhkUtil\Libs\Class_Util.ahk or copy into your code
- * @License MIT
- * @Links https://github.com/tuckn/AhkUtil
- * @Author Tuckn
- * @Email tuckn333@gmail.com
+ * @license MIT
+ * @links https://github.com/tuckn/AhkUtil
+ * @author Tuckn
+ * @email tuckn333@gmail.com
  */
 
 /**
- * @Class Util
- * @Description The Util object contains methods for parsing
- * @Methods
+ * @class Util
+ * @description The Util object contains methods for parsing
+ * @methods
  */
-class Util
-{
-  /**
-   * @Method CloneObjectDeeply
-   * @Description Returns a full deep clone of the object. {{{
-   * @Syntax clonedObj := Util.CloneObjectDeeply(obj)
-   * @Param {Object} obj
-   * @Return {Object}
-   */
-  class CloneObjectDeeply extends Util.Functor
-  {
-    Call(self, obj)
-    {
-      local rtnObj := obj.Clone()
-
-      For k, v in rtnObj
-      {
-        if (IsObject(v)) {
-          rtnObj[k] := Util.CloneObjectDeeply(v)
+class Util {
+    /**
+     * @method CloneObjectDeeply
+     * @description Deep-clone an associative/array object (recursively).
+     * @syntax clonedObj := Util.CloneObjectDeeply(obj)
+     * @param {Object} obj
+     * @returns {Object}
+     */
+    static CloneObjectDeeply(obj) {
+        if !IsObject(obj) {
+            return obj
         }
-      }
 
-      Return rtnObj
+        if obj is Array {
+            local clone := []
+            for , v in obj {
+                clone.Push(Util.CloneObjectDeeply(v))
+            }
+            return clone
+        }
+
+        if obj is Map {
+            local clone := Map()
+            for k, v in obj {
+                clone[k] := Util.CloneObjectDeeply(v)
+            }
+            return clone
+        }
+
+        if ObjOwnPropCount(obj) {
+            local clone := {}
+            for k in obj.OwnProps() {
+                clone.%k% := Util.CloneObjectDeeply(obj.%k%)
+            }
+            return clone
+        }
+
+        return obj
     }
-  } ; }}}
 
-  /**
-   * @Method DumpObjectToString
-   * @Description Returns string from the object. {{{
-   * @Syntax objStr := Util.DumpObjectToString(obj)
-   * @Param {Associative Array} obj
-   * @Param {String} [indent=""]
-   * @Return {String} objStr
-   */
-  class DumpObjectToString extends Util.Functor
-  {
-    Call(self, obj, indent="")
-    {
-      local newIndent .= indent . "  "
-      local rtnStr := "{`n"
+    /**
+     * @method DumpObjectToString
+     * @description Human-readable dump of an object (tree).
+     * @syntax objStr := Util.DumpObjectToString(obj)
+     * @param {Associative Array} obj
+     * @param {String} [indent=""]
+     * @returns {String} objStr
+     */
+    static DumpObjectToString(obj, indent := "") {
+        if !IsObject(obj) {
+            return indent . obj . "`n"
+        }
 
-      For k, v in obj
-      {
-        if (IsObject(v)) {
-          rtnStr .= newIndent . k . ": " . Util.DumpObjectToString(v, newIndent)
+        local newIndent  := indent . "    "      ; 4-space
+        local isArray    := obj is Array
+        local openBrace  := isArray ? "[" : "{"
+        local closeBrace := isArray ? "]" : "}"
+
+        local out := indent . openBrace . "`n"
+
+        if isArray {
+            local idx  := 0
+            local last := obj.Length
+
+            for , v in obj {
+                idx++
+                out .= Util.DumpObjectToString(v, newIndent)
+                if (idx < last) {
+                    out := RTrim(out, "`n") . "," . "`n"
+                }
+            }
+        } else if obj is Map {
+            local idx  := 0
+            local last := obj.Count
+
+            for k, v in obj {
+                idx++
+                local child  := Util.DumpObjectToString(v, newIndent)
+                child        := RegExReplace(child, "^" . newIndent) ; 先頭 4sp 削除
+
+                out .= newIndent . k . ": " . child
+                if (idx < last) {
+                    out := RTrim(out, "`n") . "," . "`n"
+                }
+            }
         } else {
-          rtnStr .= newIndent . k . ": " . v . "`n"
+            local propCount := ObjOwnPropCount(obj)
+            local idx       := 0
+
+            for k in obj.OwnProps() {
+                idx++
+                local child  := Util.DumpObjectToString(obj.%k%, newIndent)
+                child        := RegExReplace(child, "^" . newIndent) ; 先頭 4sp 削除
+
+                out .= newIndent . k . ": " . child
+                if (idx < propCount) {
+                    out := RTrim(out, "`n") . "," . "`n"
+                }
+            }
         }
-      }
 
-      rtnStr .= indent . "}`n"
-
-      Return rtnStr
+        return out . indent . closeBrace . "`n"
     }
-  } ; }}}
 
-  /**
-   * @Method GetCurrentDateTimeIso8601
-   * @Description  {{{
-   * @Syntax dateTextJP := Util.GetCurrentDateTimeIso8601()
-   * @Return {String} dateTextJP
-   */
-  class GetCurrentDateTimeIso8601 extends Util.Functor
-  {
-    Call(self)
-    {
-      FormatTime, rtn, R, yyyyMMddTHHmmss
-      Return rtn
-    }
-  } ; }}}
-
-  /**
-   * @Method ExecAndGetStdout
-   * @Description Get stdout {{{
-   * @Link https://autohotkey.com/board/topic/54559-stdin/
-   *   http://www.autohotkey.com/board/topic/15455-stdouttovar/page-8#entry540600
-   *   http://poimono.exblog.jp/25278401/
-   * @Syntax stdout := Util.ExecAndGetStdout("ping localhost"[, ...])
-   * @Param {string} psCmd
-   * @Param {string} [psInput=""]
-   * @Param {string} [psEncoding="CP0"]
-   * @Param {string} [psDir=""]
-   * @Param {long} [pnExitCode=0]
-   * @Return
-   */
-  class ExecAndGetStdout extends Util.Functor
-  {
-    Call(self, psCmd, psInput="", psEncoding:="CP0", psDir:="", ByRef pnExitCode:=0)
-    {
-      DllCall("CreatePipe", PtrP, hStdInRd, PtrP, hStdInWr, Ptr, 0, UInt, 0)
-      DllCall("CreatePipe", PtrP, hStdOutRd, PtrP, hStdOutWr, Ptr, 0, UInt, 0)
-      DllCall("SetHandleInformation", Ptr, hStdInRd, Uint, 1, Uint, 1)
-      DllCall("SetHandleInformation", Ptr, hStdOutWr, UInt, 1, UInt, 1)
-
-      VarSetCapacity(pi, (A_PtrSize == 4) ? 16 : 24, 0)
-      siSz := VarSetCapacity(si, (A_PtrSize == 4) ? 68 : 104, 0)
-      NumPut(siSz, si, 0, "UInt")
-      NumPut(0x100, si, (A_PtrSize == 4) ? 44 : 60, "UInt")
-      NumPut(hStdInRd, si, (A_PtrSize == 4) ? 56 : 80, "Ptr")
-      NumPut(hStdOutWr, si, (A_PtrSize == 4) ? 60 : 88, "Ptr")
-      NumPut(hStdOutWr, si, (A_PtrSize == 4) ? 64 : 96, "Ptr")
-
-      If (!DllCall("CreateProcess", Ptr, 0, Ptr, &psCmd, Ptr, 0, Ptr, 0, Int, True, UInt
-          , 0x08000000, Ptr, 0, Ptr, psDir ? &psDir : 0, Ptr, &si, Ptr, &pi))
-       Return
-       , DllCall("CloseHandle", Ptr, hStdOutWr)
-       , DllCall("CloseHandle", Ptr, hStdOutRd)
-       , DllCall("CloseHandle", Ptr, hStdInRd)
-
-      ; The write pipe must be closed before reading the stdout.
-      DllCall("CloseHandle", Ptr, hStdOutWr )
-
-      if (psInput != "") {
-        FileOpen(hStdInWr, "h", psEncoding).Write(psInput)
-      }
-
-      DllCall("CloseHandle", "Ptr", hStdInWr)
-
-      StdOutBuf := FileOpen(hStdOutRd, "h", psEncoding)
-      StrBuf := 1
-
-      while StrLen(StrBuf) {
-       StrBuf := StdOutBuf.Read(2047)
-       sOutPut .= StrBuf
-      }
-      StdOutBuf.Close()
-
-      DllCall("GetExitCodeProcess", Ptr, NumGet(pi, 0), UIntP, pnExitCode)
-      DllCall("CloseHandle", Ptr, NumGet(pi, 0) )
-      DllCall("CloseHandle", Ptr, NumGet(pi, A_PtrSize) )
-      DllCall("CloseHandle", Ptr, hStdOutRd )
-
-      Return sOutPut
-    }
-  } ; }}}
-
-  /**
-   * @Method EnclosePathInQuotes
-   * @Description C:\Program Files -> "C:\Program Files" {{{
-   */
-  class EnclosePathInQuotes extends Util.Functor
-  {
-    Call(self, pathStr)
-    {
-      ; Return pathStr
-      local quote := Chr(34)  ; ASCII 34 = "
-      pathStr := Trim(pathStr)
-
-      ; If the string is shorter than 2 characters,
-      ; or the first/last chars are not double quotes,
-      ; enclose the entire string in double quotes.
-      if (StrLen(pathStr) < 2
-          || SubStr(pathStr, 1, 1) != quote
-          || SubStr(pathStr, 0) != quote)
-      {
-          pathStr := quote . pathStr . quote
-      }
-
-      return pathStr
-    }
-  } ; }}}
-
-  /**
-   * @Method GetRelativePath
-   * @Description Get the relative path {{{
-   * @Link https://autohotkey.com/board/topic/17922-func-relativepath-absolutepath/
-   * @Param {string} MasterDirPath
-   * @Param {string} SlavePath
-   * @Return {string}
-   */
-  class GetRelativePath extends Util.Functor
-  {
-    Call(self, MasterDirPath, SlavePath)
-    {
-      IfInString, SlavePath, /, Return, SlavePath
-
-      ; Remove last \ if there are any
-      MasterDirPath := RegExReplace(MasterDirPath, "\\$")
-      SlavePath  := RegExReplace(SlavePath, "\\$")
-
-      ; Create arrays
-      StringSplit, MasterDirPath, MasterDirPath, \
-      StringSplit, SlavePath, SlavePath, \
-
-      ; Sort out equivalent portions
-      Loop, %MasterDirPath0%
-      {
-        if (MasterDirPath%A_Index% = SlavePath%A_Index%) {
-          Same := A_Index
-        } else {
-          Break
+    /**
+     * @method GetCurrentDateTimeIso8601
+     * @description Current timestamp in basic ISO-8601 (local time, JST if system TZ). Format example → 20250724T102530
+     * @syntax dateTextJP := Util.GetCurrentDateTimeIso8601()
+     * @param  {String|Unset} fmt 省略時は yyyyMMddTHHmmss±HHMM。指定があると  FormatTime() の書式をそのまま通して返す。
+     * @returns {String}
+     */
+    static GetCurrentDateTimeIso8601(fmt := unset) {
+        if IsSet(fmt) {
+            return FormatTime(A_Now, fmt)
         }
-      }
 
-      ; build relative path
-      Loop, % MasterDirPath0 - Same
-      {
-        RelativePath .= "..\"
-      }
-
-      Loop, % SlavePath0 - Same
-      {
-        ID := Same + A_Index
-        RelativePath .= SlavePath%ID% "\"
-      }
-
-      RelativePath := RegExReplace(RelativePath, "\\$", "")
-      Return RelativePath
+        local ts  := FormatTime(A_Now, "yyyyMMddTHHmmss")  ; 正しい引数位置
+        local off := Util.__tzOffset()
+        return ts off
     }
-  } ; }}}
+    static __tzOffset() {
+        ; 差を秒で取得（正ならローカル > UTC）
+        local secDiff := DateDiff(A_NowUTC, A_Now, "Seconds")
 
-  /**
-   * @Method ParseLParam {{{
-   */
-  class ParseLParam extends Util.Functor
-  {
-    Call(self, lParam)
-    {
-      ; Retrieves the CopyDataStruct's lpData member.
-      local stringAddress := NumGet(lParam + 2*A_PtrSize)
-      ; Copy the string out of the structure.
-      local copyOfData := StrGet(stringAddress)
+        local sign := (secDiff >= 0) ? "+" : "-"
+        secDiff    := Abs(secDiff)
 
-      Return copyOfData
+        local hh := secDiff // 3600
+        local mm := (secDiff // 60) - hh * 60
+        return Format("{:s}{:02}{:02}", sign, hh, mm)
     }
-  } ; }}}
 
-  /**
-   * @Method SuspendHotkeysForSec
-   * @Description Suspend hotkeys while waiting {{{
-   * @Link https://www.autohotkey.com/docs/commands/Suspend.htm
-   * @Param {Number} sec
-   * @Return
-   */
-  class SuspendHotkeysForSec extends Util.Functor
-  {
-    Call(self, sec)
-    {
-      ; @NOTE Suspendの前にSleepを入れないと、たまにキーが押しっぱなしになる
-      Sleep, 1000
-      Suspend, On
+    /**
+     * @method ExecAndGetStdout
+     * @description Run a command and capture its stdout.
+     * @link https://autohotkey.com/board/topic/54559-stdin/
+     *   http://www.autohotkey.com/board/topic/15455-stdouttovar/page-8#entry540600
+     *   http://poimono.exblog.jp/25278401/
+     * @syntax stdout := Util.ExecAndGetStdout("ping localhost"[, ...])
+     * @param {String} cmd Command-line string
+     * @param {String} [input=""] Text written to STDIN (optional)
+     * @param {String} [encoding="CP0"] Encoding used for the pipes ("UTF-8", "CP0" …)
+     * @param {String} [dir=""] Working directory ("" = current)
+     * @param {Long} [exitCode=0] Receives the process exit-code
+     * @returns {String} Entire stdout as a string
+     */
+    static ExecAndGetStdout(cmd
+        , input := ""
+        , encoding := "CP0"
+        , dir := ""
+        , &exitCode := 0
+    ) {
+        ; --- create pipes ----------------------------------------------------
+        local hInRd := 0, hInWr := 0
+        local hOutRd := 0, hOutWr := 0
 
-      Loop, %sec%
-      {
-        ToolTip, Suspending hotkeys is %sec% seconds left
-        Sleep, 1000
-        sec -= 1
-      }
+        DllCall("CreatePipe", "ptr*", &hInRd , "ptr*", &hInWr , "ptr", 0, "uint", 0)
+        DllCall("CreatePipe", "ptr*", &hOutRd, "ptr*", &hOutWr, "ptr", 0, "uint", 0)
+        DllCall("SetHandleInformation", "ptr", hInRd , "uint", 1, "uint", 1)
+        DllCall("SetHandleInformation", "ptr", hOutWr, "uint", 1, "uint", 1)
 
-      ToolTip
-      Suspend, Off
-      Return
+        ; --- STARTUPINFO / PROCESS_INFORMATION ------------------------------
+        local si     := Buffer(A_PtrSize = 4 ? 68 : 104, 0)
+        local pi     := Buffer(A_PtrSize = 4 ? 16 : 24 , 0)
+        NumPut("uint", si.Size, si)                       ; cb
+        NumPut("uint", 0x100,  si, A_PtrSize = 4 ? 44 : 60) ; dwFlags = STARTF_USESTDHANDLES
+        NumPut("ptr",  hInRd , si, A_PtrSize = 4 ? 56 : 80) ; hStdInput
+        NumPut("ptr",  hOutWr, si, A_PtrSize = 4 ? 60 : 88) ; hStdOutput
+        NumPut("ptr",  hOutWr, si, A_PtrSize = 4 ? 64 : 96) ; hStdError
+
+        ; --- create process --------------------------------------------------
+        local ok := DllCall("CreateProcessW"
+            , "ptr", 0
+            , "ptr", StrPtr(cmd)
+            , "ptr", 0, "ptr", 0
+            , "int", true
+            , "uint", 0x08000000              ; CREATE_NO_WINDOW
+            , "ptr", 0
+            , "ptr", dir ? StrPtr(dir) : 0
+            , "ptr", si.ptr
+            , "ptr", pi.ptr)
+
+        if !ok {
+            DllCall("CloseHandle", "ptr", hOutWr)
+            DllCall("CloseHandle", "ptr", hOutRd)
+            DllCall("CloseHandle", "ptr", hInRd )
+            throw Error("CreateProcess failed")
+        }
+
+        DllCall("CloseHandle", "ptr", hOutWr) ; close write-end first
+
+        if input != "" {
+            FileOpen(hInWr, "h", encoding).Write(input)
+        }
+        DllCall("CloseHandle", "ptr", hInWr)
+
+        ; --- 子プロセス終了を待機 --------------------------------
+        local hProcess := NumGet(pi, 0, "ptr")
+        DllCall("WaitForSingleObject", "ptr", hProcess, "uint", 0xFFFFFFFF) ; INFINITE
+
+        ; --- すべて読み切る ---------------------------------------
+        local file := FileOpen(hOutRd, "h", encoding)
+        local stdout := ""
+        while chunk := file.Read(4096) { ; EOF になるまで空文字は返らない
+            stdout .= chunk
+        }
+        file.Close()
+        DllCall("CloseHandle", "ptr", hOutRd)
+
+        ; --- ExitCode と後片付け ----------------------------------
+        DllCall("GetExitCodeProcess", "ptr", hProcess, "uint*", &exitCode)
+        DllCall("CloseHandle",        "ptr", hProcess)
+        DllCall("CloseHandle",        "ptr", NumGet(pi, A_PtrSize, "ptr")) ; hThread
+
+        return stdout
     }
-  } ; }}}
 
-  /**
-   * @Method WaitSecWithToolTipCountdown
-   * @Description Wait with ToolTip countdown  {{{
-   * @Link https://www.autohotkey.com/docs/commands/Suspend.htm
-   * @Param {Number} sec
-   * @Return
-   */
-  class WaitSecWithToolTipCountdown extends Util.Functor
-  {
-    Call(self, sec)
-    {
-      Loop, %sec%
-      {
-        ToolTip, %sec% seconds left
-        Sleep, 1000
-        sec -= 1
-      }
+    /**
+     * @method EnclosePathInQuotes
+     * @description Ensure a path string is enclosed with double quotes. e.g. C:\Program Files -> "C:\Program Files"
+     */
+    static EnclosePathInQuotes(pathStr) {
+        ; Return pathStr
+        local quote := Chr(34)  ; ASCII 34 = "
+        pathStr := Trim(pathStr)
 
-      ToolTip
-      Return
+        ; If the string is shorter than 2 characters,
+        ; or the first/last chars are not double quotes,
+        ; enclose the entire string in double quotes.
+        if (StrLen(pathStr) < 2
+            || SubStr(pathStr, 1, 1) != quote
+            || SubStr(pathStr, -1) != quote
+        ) {
+            pathStr := quote . pathStr . quote
+        }
+
+        return pathStr
     }
-  } ; }}}
 
-  /**
-   * @Property CliArgs
-   * @Description CLI arguments {{{
-   * @Syntax args := Util.CliArgs
-   * @Return {Array}
-   */
-  CliArgs[]
-  {
-    get {
-      Return A_Args ; AutoHotkey v1.1.27+
-      ; Get arguments. A_Index begin from 1
-      ; Local args := []
-      ;
-      ; Loop, %0%
-      ; {
-      ;   args[A_Index] := %A_Index%
-      ; }
-    }
-  } ; }}}
+    /**
+     * @method GetRelativePath
+     * @description Compute a relative path  (baseDir → targetPath).
+     * @link https://autohotkey.com/board/topic/17922-func-relativepath-absolutepath/
+     * @param {string} baseDir
+     * @param {string} targetPath
+     * @returns {string}
+     */
+    static GetRelativePath(baseDir, targetPath) {
+        ; ドライブが違えば絶対パスを返す
+        if SubStr(baseDir, 1, 2) != SubStr(targetPath, 1, 2) {
+            return targetPath
+        }
 
-  class Functor
-  {
-    __Call(method, args*)
-    {
-    ; When casting to Call(), use a new instance of the "function object"
-    ; so as to avoid directly storing the properties(used across sub-methods)
-    ; into the "function object" itself.
-      if (method == "")
-        Return (new this).Call(args*)
-      if (IsObject(method))
-        Return (new this).Call(method, args*)
+        ; 1) / が混ざっていたらそのまま返す
+        if InStr(targetPath, "/") {
+            return targetPath
+        }
+
+        ; 2) 末尾の \ を除去し配列化
+        baseParts   := StrSplit(Trim(baseDir   , "\"), "\")
+        targetParts := StrSplit(Trim(targetPath, "\"), "\")
+
+        ; 3) 共通部分を数える
+        same := 0
+        for idx, part in baseParts {
+            if (idx > targetParts.Length || part != targetParts[idx])
+                break
+            same := idx
+        }
+
+        ; 4) 上位へ戻る "..\" を連結
+        rel := ""
+        for idx, _ in baseParts {
+            if (idx > same) {
+                rel .= "..\"
+            }
+        }
+
+        ; 5) 残りのパス要素を連結
+        for idx, seg in targetParts {
+            if (idx > same) {
+                rel .= seg "\"
+            }
+        }
+
+        ; 6) 末尾の \ を削る
+        return RTrim(rel, "\")
     }
-  }
+
+    /**
+     * @method ParseLParam
+     */
+    static ParseLParam(lParam) {
+        if !lParam {
+            throw Error("lParam = 0")
+        }
+
+        ; Retrieves the CopyDataStruct's lpData member.
+        ; lpData は 3 番目のポインタ
+        local strPtr := NumGet(lParam + 2*A_PtrSize, "UPtr")
+        if !strPtr {
+            throw Error("COPYDATASTRUCT.lpData = 0")
+        }
+
+        ; Copy the string out of the structure.
+        return StrGet(strPtr)          ; 0 終端前提
+    }
+
+    /**
+     * @method SuspendHotkeysForSec
+     * @description Suspend hotkeys while waiting
+     * @link https://www.autohotkey.com/docs/commands/Suspend.htm
+     * @param {Number} sec
+     * @return
+     */
+    static SuspendHotkeysForSec(sec) {
+        ; @NOTE Suspendの前にSleepを入れないと、たまにキーが押しっぱなしになる
+        Sleep(1000)
+        Suspend(true)
+
+        loop sec {
+            ToolTip("Suspending hotkeys... " sec " seconds left")
+            Sleep(1000)
+            sec -= 1
+        }
+
+        ToolTip()
+        Suspend(false)
+        return
+    }
+
+    /**
+     * @method WaitSecWithToolTipCountdown
+     * @description Wait with ToolTip countdown
+     * @link https://www.autohotkey.com/docs/commands/Suspend.htm
+     * @param {Number} sec
+     * @return
+     */
+    static WaitSecWithToolTipCountdown(sec) {
+        loop sec {
+            ToolTip(sec " seconds left")
+            Sleep(1000)
+            sec -= 1
+        }
+
+        ToolTip()
+        return
+    }
+
+    /**
+     * @property CliArgs
+     * @description CLI arguments
+     * @syntax args := Util.CliArgs
+     * @returns {Array}
+     */
+    static CliArgs => A_Args
 }
 
 ; vim:set foldmethod=marker commentstring=;%s :

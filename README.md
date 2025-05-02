@@ -1,90 +1,118 @@
-# AhkUtil
+# AhkUtil – Utility helpers for AutoHotkey v2
 
 ## Overview
 
-AhkUtil is a collection of utility functions designed for AutoHotkey v1.1.x. It provides a range of common utilities such as deep cloning objects, printing objects as indented text, obtaining stdout from external processes, manipulating file paths, suspending hotkeys for a specified time, and more.
+**AhkUtil** is a single-file collection of small yet reusable helpers that often come in handy when writing AutoHotkey v2 scripts.  
+The utilities are provided as a class (`Class_Util.ahk`) and cover deep-cloning, pretty-printing objects, ISO-8601 date-time helpers, running external commands and capturing their output, path utilities, hot-key helpers, and more.
 
-**Requirements**:  
+---
 
-- AutoHotkey v1.1.x (officially tested)  
-- Not confirmed to work on AutoHotkey v2.0 or newer.
+## Features
+
+| Method / property | What it does |
+|-------------------|--------------|
+| `Util.CloneObjectDeeply(obj)` | Recursively deep-clones **Array**, **Map** or plain objects. |
+| `Util.DumpObjectToString(obj [, indent])` | Dumps any AHK object to a human-readable multiline string. |
+| `Util.GetCurrentDateTimeIso8601([fmt])` | Returns current local date/time in `yyyyMMddTHHmmss±HHMM`&nbsp;format or any custom `fmt` accepted by `FormatTime()`. |
+| `Util.ExecAndGetStdout(cmd [, input, enc, dir, &exitCode])` | Runs a command **silently** and returns all text written to **STDOUT**. |
+| `Util.EnclosePathInQuotes(path)` | Adds quotes only when the path is not already quoted. |
+| `Util.GetRelativePath(baseDir, target)` | Calculates a relative path (Windows style). |
+| `Util.ParseLParam(lParam)` | Extracts text from a `WM_COPYDATA` `lParam`. |
+| `Util.SuspendHotkeysForSec(sec)` | Temporarily calls `Suspend On`, shows a countdown ToolTip and resumes. |
+| `Util.WaitSecWithToolTipCountdown(sec)` | Simple countdown ToolTip helper. |
+| `Util.CliArgs` | Read-only shortcut for `A_Args`. |
+
+*All methods are `static`; just call them as shown above.*
+
+---
+
+## Requirements
+
+- **AutoHotkey v2.0** or newer (tested on v2.0.19)
+
+---
 
 ## Installation
 
-1. **Download or Clone**  
-   - Obtain this repository and place it in your desired location, such as `AhkUtil`.
-2. **Include the Class**  
-   - In your script, add the following line:
+<details>
+<summary><strong>1&nbsp;—&nbsp;Clone</strong></summary>
 
-     ```ahk
-     #Include %A_ScriptDir%\AhkUtil\Libs\Class_Util.ahk
-     ```
+```powershell
+git clone https://github.com/tuckn/AhkUtil.git
+```
+</details>
 
-3. **Verify AutoHotkey Version**  
-   - This library is intended for AutoHotkey v1.1.x.  
-   - It has not been tested with v2.0 or higher.
+<details>
+<summary><strong>2&nbsp;—&nbsp;Git sub-module</strong></summary>
 
-## Usage
+```powershell
+git submodule add https://github.com/tuckn/AhkUtil.git Submodules/AhkUtil
+```
+</details>
 
-Once you have included `Class_Util.ahk`, you can call the methods via `Util.<MethodName>`:
+---
 
-- **`Util.CloneObjectDeeply(obj)`**  
-  Returns a deep clone of the given object.
-- **`Util.DumpObjectToString(obj[, indent])`**  
-  Dumps an object structure to a multiline string.
-- **`Util.GetCurrentDateTimeIso8601()`**  
-  Generates a date/time string in a pseudo-ISO8601 format (e.g., `20231023T153000`).
-- **`Util.ExecAndGetStdout(psCmd[, psInput, psEncoding, psDir, ByRef pnExitCode])`**  
-  Runs a command in a child process and retrieves its standard output.
-- **`Util.EnclosePathInQuotes(pathStr)`**  
-  Ensures a path string is enclosed in double quotes, if needed.
-- **`Util.GetRelativePath(MasterDirPath, SlavePath)`**  
-  Calculates a relative path from `MasterDirPath` to `SlavePath`.
-- **`Util.ParseLParam(lParam)`**  
-  Parses the `lParam` of a `WM_COPYDATA` message to retrieve a string.
-- **`Util.SuspendHotkeysForSec(sec)`**  
-  Suspends all hotkeys for the specified number of seconds.
-- **`Util.WaitSecWithToolTipCountdown(sec)`**  
-  Shows a tooltip countdown, then waits for the specified number of seconds.
-
-Additionally, `Util.CliArgs` provides easy access to command-line arguments (for AutoHotkey v1.1.27+).
-
-## Examples
+## Quick start
 
 ```ahk
-#Include %A_ScriptDir%\AhkUtil\Libs\Class_Util.ahk
+; Run_Sample.ahk
+#Requires AutoHotkey v2.0
+#Include %A_ScriptDir%\Submodules\AhkUtil\Libs\Class_Util.ahk  ; adjust your path
 
-; 1. Deep clone an object
-myObj := { name: "AutoHotkey", data: { key1: "val1" } }
-clone := Util.CloneObjectDeeply(myObj)
-MsgBox, Original: %myObj.data.key1%`nClone: %clone.data.key1%
-
-; 2. Print object structure
-msg := Util.DumpObjectToString(myObj)
-MsgBox, %msg%
-
-; 3. Get current date/time
-isoTime := Util.GetCurrentDateTimeIso8601()
-MsgBox, Current date/time (ISO8601-like): %isoTime%
-
-; 4. Execute a command
-stdout := Util.ExecAndGetStdout("ping localhost")
-MsgBox, Ping result:`n%stdout%
-
-; 5. Enclose path in quotes
-quotedPath := Util.EnclosePathInQuotes("C:\Program Files\AutoHotkey")
-MsgBox, Quoted path: %quotedPath%
-
-; 6. Suspend hotkeys
-Util.SuspendHotkeysForSec(3) ; Hotkeys suspended for 3 seconds
-MsgBox, Hotkeys are resumed now!
+stdout := Util.ExecAndGetStdout("ping 127.0.0.1")
+MsgBox(stdout, "Ping result")
 ```
+
+Run:
+
+```powershell
+AutoHotkey64.exe Run_Sample.ahk
+```
+
+---
+
+## Directory layout
+
+```
+AhkUtil/
+  Libs/
+    Class_Util.ahk   ; the only file you need at runtime
+  Test/
+    *.test.ahk       ; self-contained CLI tests (AutoHotkey v2)
+  Run_Sample.ahk     ; minimal demo
+```
+
+---
+
+## Testing
+
+All helper methods are covered by CLI tests under **/Test**.
+
+```powershell
+cd AhkUtil
+AutoHotkey64.exe .\Test\Test_Util.ahk --dummy
+```
+
+If everything is green you’ll see `RESULT: All tests passed ✔`.
+
+---
+
+## Contributing
+
+Bug reports, suggestions and pull requests are welcome!  
+Please follow the code-style rules documented in [tuckn/AhkStyleGuide](https://github.com/tuckn/AhkStyleGuide) and keep new helpers fully self-contained and unit-tested whenever possible.
+
+---
 
 ## License
 
-This project is licensed under the [MIT License](./LICENSE). You are free to use, modify, and distribute it.
+Released under the [MIT License](./LICENSE). You are free to use, modify and distribute the code – attribution appreciated but not required.
 
-## Contact
+---
 
-- **Author**: Tuckn  
+## Author
+
+- **Tuckn** <https://github.com/tuckn>  
 - **X (Twitter)**: [https://x.com/Tuckn333](https://x.com/Tuckn333)
+
+If you find the module useful, feel free to ⭐ the repository or drop feedback.
